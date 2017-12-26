@@ -13,14 +13,27 @@ const (
 
 type rollbackType byte
 
+const (
+	//RollbackTypeNone means no rollback
+	RollbackTypeNone rollbackType = iota
+	//RollbackTypeOne means just rollback single command,yet last failed one
+	RollbackTypeOne
+	//RollbackTypeBackTrace means rollback backtrack util one without rollback or the first one
+	RollbackTypeBackTrace
+	//RollbackTypeAll which is recommended is rollback all,this requires that each command should have rollback command
+	RollbackTypeAll
+)
+
 //Client is a single ssh client
 type Client struct {
 	authTyp     authType
-	address     string
-	user        string
 	rollbackTyp rollbackType
-	c           *ssh.Client
-	err         error
+
+	address string
+	user    string
+
+	sshc *ssh.Client
+	err  error
 }
 
 //NewClientByPassword creates client by password
@@ -37,7 +50,14 @@ func NewClientByPassword(address, user, password string, rollbackTyp rollbackTyp
 		address:     address,
 		user:        user,
 		rollbackTyp: rollbackTyp,
-		c:           c,
+		sshc:        c,
 		err:         err,
 	}
+}
+
+func (c *Client) session() (*ssh.Session, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return c.sshc.NewSession()
 }

@@ -8,7 +8,8 @@ import (
 )
 
 func main() {
-	c := client.NewClientByPassword("127.0.0.1:22", "root", "yf@123", client.RollbackTypeNone)
+	passwd := ""
+	c := client.NewClientByPassword("127.0.0.1:22", "root", passwd, client.RollbackTypeNone)
 	if c.Err() != nil {
 		panic(c.Err())
 	}

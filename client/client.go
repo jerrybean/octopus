@@ -8,7 +8,23 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type authType byte
+type (
+	authType byte
+
+	rollbackType byte
+
+	//Client is a single ssh client
+	Client struct {
+		authTyp     authType
+		rollbackTyp rollbackType
+
+		address string
+		user    string
+
+		sshc *ssh.Client
+		err  error
+	}
+)
 
 const (
 	//AuthTypePassword is the type of ssh by password
@@ -16,8 +32,6 @@ const (
 	//AuthTypePublicKey is the type of ssh by public key
 	AuthTypePublicKey
 )
-
-type rollbackType byte
 
 const (
 	//RollbackTypeNone means no rollback
@@ -30,19 +44,15 @@ const (
 	RollbackTypeAll
 )
 
-//Client is a single ssh client
-type Client struct {
-	authTyp     authType
-	rollbackTyp rollbackType
+var (
+	//ErrEmptyCommand defines empty command error
+	ErrEmptyCommand = errors.New("empty command")
+	//ErrRollbackTypeAllWithNoRollbackCmd defines rollback type all with no rollback command
+	ErrRollbackTypeAllWithNoRollbackCmd = errors.New("rollback type all with no rollback command")
 
-	address string
-	user    string
-
-	sshc *ssh.Client
-	err  error
-}
-
-func (c *Client) Err() error { return c.err }
+	//ErrRunWithEmptyCommand defines run with empty command
+	ErrRunWithEmptyCommand = errors.New("run with empty command")
+)
 
 //NewClientByPassword creates client by password
 func NewClientByPassword(address, user, password string, rollbackTyp rollbackType) *Client {
@@ -73,15 +83,8 @@ func (c *Client) session() (*ssh.Session, error) {
 	return c.sshc.NewSession()
 }
 
-var (
-	//ErrEmptyCommand defines empty command error
-	ErrEmptyCommand = errors.New("empty command")
-	//ErrRollbackTypeAllWithNoRollbackCmd defines rollback type all with no rollback command
-	ErrRollbackTypeAllWithNoRollbackCmd = errors.New("rollback type all with no rollback command")
-
-	//ErrRunWithEmptyCommand defines run with empty command
-	ErrRunWithEmptyCommand = errors.New("run with empty command")
-)
+//Err will return client's error
+func (c *Client) Err() error { return c.err }
 
 func checkCommandsByRollbackType(cmds []*Command, rt rollbackType) error {
 	if len(cmds) == 0 {
@@ -126,14 +129,19 @@ func (c *Client) RunCmds(cmds []*Command) ([]*Command, error) {
 	if err := checkCommandsByRollbackType(cmds, c.rollbackTyp); err != nil {
 		return nil, err
 	}
-	for i, cmd := range cmds {
-		if err := sessionRunCmdWithEnv(c, cmd.cmd, cmd.cmdEnv, &cmds[i].output, &cmd.errOutput); err != nil {
+	for i := range cmds {
+		if err := sessionRunCmdWithEnv(c, cmds[i].cmd, cmds[i].cmdEnv, &cmds[i].output, &cmds[i].errOutput); err != nil {
 			cmds[i].status = CommandStatusFailed
 		} else {
 			cmds[i].status = CommandStatusSuccess
 		}
-		//TODO check
-		//TODO rollback
+		var checkResult bool
+		if cmds[i].needCheck() {
+			//TODO check
+		}
+		if cmds[i].needRollback() {
+			//TODO rollback
+		}
 	}
 	return cmds, nil
 }

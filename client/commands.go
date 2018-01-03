@@ -86,19 +86,35 @@ func (c *Command) Status() CommandStatus { return c.status }
 //StatusName will get Command's status in string
 func (c *Command) StatusName() string { return statusMap[c.status] }
 
-//Output will get command run result if cmd run success
+//Output will get command run result if cmd runs success
 func (c *Command) Output() string { return c.output.String() }
 
-//ErrOutput will get command err info if cmd run failed
+//ErrOutput will get command err info if cmd runs failed
 func (c *Command) ErrOutput() string { return c.errOutput.String() }
 
+//CheckOutput will get check command output
 func (c *Command) CheckOutput() string { return c.checkOutput.String() }
 
+//CheckErrOutput will get check command err info if check command runs failed
 func (c *Command) CheckErrOutput() string { return c.checkErrOutput.String() }
 
+//RollbackOutput will get rollback command output
 func (c *Command) RollbackOutput() string { return c.rollbackOutput.String() }
 
+//RollbackErrOutput will get rollback commanderr info if rollback command runs failed
 func (c *Command) RollbackErrOutput() string { return c.rollbackErrOutput.String() }
+
+// only command's run command runs successfully and checkCmd is not empty need check
+func (c *Command) needCheck() bool {
+	return c.Status() == CommandStatusSuccess && c.checkCmd != ""
+}
+
+func (c *Command) needRollback(checkResult bool) bool {
+	if c.rollbackCmd == "" {
+		return false
+	}
+	return !checkResult
+}
 
 //AddCmdEnv is used for add cmd environment variables
 func (c *Command) AddCmdEnv(env map[string]string) {
@@ -109,8 +125,8 @@ func (c *Command) AddCmdEnv(env map[string]string) {
 	c.mu.Unlock()
 }
 
-//AddDetectEnv is used for add check cmd environment variables
-func (c *Command) AddDetectEnv(env map[string]string) {
+//AddCheckEnv is used for add check cmd environment variables
+func (c *Command) AddCheckEnv(env map[string]string) {
 	c.mu.Lock()
 	for k, v := range env {
 		c.checkCmdEnv[k] = v
